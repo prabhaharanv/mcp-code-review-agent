@@ -27,7 +27,6 @@ DEFAULT_MAX_TOTAL_TOKENS = 120_000
 # Cost per 1M tokens (approximate, for logging)
 _COST_PER_1M: dict[str, dict[str, float]] = {
     "claude-sonnet-4-20250514": {"input": 3.0, "output": 15.0},
-    "claude-sonnet-4-20250514": {"input": 3.0, "output": 15.0},
     "gpt-4o": {"input": 2.5, "output": 10.0},
     "gpt-4o-mini": {"input": 0.15, "output": 0.6},
 }

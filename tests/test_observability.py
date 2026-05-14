@@ -6,11 +6,6 @@ import pytest
 
 from agent.observability import (
     ACTIVE_REVIEWS,
-    FINDINGS_TOTAL,
-    REVIEW_DURATION,
-    REVIEW_REQUESTS,
-    TOKEN_USAGE,
-    TOOL_CALLS,
     TraceContext,
     record_findings,
     record_review_end,
@@ -29,7 +24,7 @@ class TestTraceContext:
         return TraceContext(trace_id="test-trace-123", pr_url="https://github.com/o/r/pull/1")
 
     async def test_span_records_duration(self, trace):
-        async with trace.span("test_span", key="value") as span:
+        async with trace.span("test_span", key="value"):
             pass  # near-zero duration
         assert len(trace.spans) == 1
         assert trace.spans[0]["name"] == "test_span"

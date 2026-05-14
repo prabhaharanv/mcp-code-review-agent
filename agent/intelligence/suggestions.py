@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from agent.models import Finding, Severity
+from agent.models import Finding
 
 
 @dataclass

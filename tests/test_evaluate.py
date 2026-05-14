@@ -2,9 +2,6 @@
 
 import json
 import tempfile
-from pathlib import Path
-
-import pytest
 
 from agent.models import Finding, Severity
 from eval.evaluate import (

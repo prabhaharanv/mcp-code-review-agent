@@ -21,7 +21,6 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 from agent.client import MCPClient
-from agent.models import AgentEvent
 from agent.observability import (
     record_review_start,
     record_review_end,

@@ -14,7 +14,6 @@ from __future__ import annotations
 import time
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
-from functools import wraps
 from typing import Any
 
 from prometheus_client import Counter, Histogram, Gauge, Info

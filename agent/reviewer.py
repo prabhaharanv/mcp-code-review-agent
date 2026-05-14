@@ -21,8 +21,8 @@ from agent.budget import TokenBudget
 from agent.client import MCPClient
 from agent.core import ReviewAgent
 from agent.intelligence.pipeline import run_intelligence_pipeline
-from agent.models import AgentEvent, Finding, ReviewResult, Severity
-from agent.observability import TraceContext, record_tool_call, record_intelligence_duration, record_token_usage
+from agent.models import AgentEvent, Finding, ReviewResult
+from agent.observability import TraceContext, record_intelligence_duration
 from agent.parser import parse_tool_output
 from agent.planner import create_review_plan, plan_to_prompt_context
 from config import settings
@@ -45,7 +45,8 @@ async def run_review(
     Returns:
         Structured ReviewResult with findings
     """
-    import uuid, time
+    import uuid
+    import time
     result = ReviewResult(pr_url=pr_url)
     trace = TraceContext(trace_id=str(uuid.uuid4()), pr_url=pr_url)
     budget = TokenBudget(

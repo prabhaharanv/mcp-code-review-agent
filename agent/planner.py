@@ -6,8 +6,6 @@ file list, then produces a ReviewPlan that guides the agent's tool usage.
 
 from __future__ import annotations
 
-import json
-
 from agent.models import ReviewPlan
 
 # File extensions that benefit from specific tools

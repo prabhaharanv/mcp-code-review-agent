@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from agent.models import Finding, ReviewPlan, Severity
+from agent.models import ReviewPlan, Severity
 
 
 class ReviewRequest(BaseModel):

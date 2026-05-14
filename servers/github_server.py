@@ -70,7 +70,7 @@ async def get_pr_metadata(pr_url: str) -> str:
             "base_branch": pr["base"]["ref"],
             "head_branch": pr["head"]["ref"],
             "head_sha": pr["head"]["sha"],
-            "labels": [l["name"] for l in pr["labels"]],
+            "labels": [label["name"] for label in pr["labels"]],
             "created_at": pr["created_at"],
             "updated_at": pr["updated_at"],
             "additions": pr["additions"],

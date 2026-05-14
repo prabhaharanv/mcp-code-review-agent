@@ -120,7 +120,7 @@ def _check_init_exports(
                     severity=Severity.NIT,
                     file_path=f"{dir_path}/__init__.py",
                     line=None,
-                    title=f"New module(s) added without updating `__init__.py`",
+                    title="New module(s) added without updating `__init__.py`",
                     description=(
                         f"New files added to `{dir_path}/`: {', '.join(_short_name(f) for f in new_files)}. "
                         f"Consider updating `__init__.py` if these should be public exports."

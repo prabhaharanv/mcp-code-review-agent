@@ -17,7 +17,9 @@ import anthropic
 import openai
 import structlog
 
+from agent.budget import TokenBudget
 from agent.client import MCPClient
+from agent.observability import record_tool_call, record_token_usage
 from agent.prompts import REVIEW_TASK_TEMPLATE, build_system_prompt
 from config import settings
 
@@ -41,6 +43,7 @@ class ReviewAgent:
 
     mcp_client: MCPClient
     max_steps: int = field(default_factory=lambda: settings.max_agent_steps)
+    budget: TokenBudget = field(default_factory=TokenBudget)
     steps: list[AgentStep] = field(default_factory=list)
 
     async def review(self, pr_url: str) -> str:
@@ -89,6 +92,10 @@ class ReviewAgent:
         messages = [{"role": "user", "content": task}]
 
         for step_num in range(1, self.max_steps + 1):
+            if not self.budget.check_budget():
+                log.warning("budget_exceeded", provider="anthropic")
+                return "Review stopped: token budget exceeded."
+
             log.info("agent_step", step=step_num, provider="anthropic")
 
             response = await client.messages.create(
@@ -98,6 +105,13 @@ class ReviewAgent:
                 tools=tools,
                 messages=messages,
             )
+
+            # Track token usage
+            if hasattr(response, 'usage') and response.usage:
+                inp = response.usage.input_tokens
+                out = response.usage.output_tokens
+                self.budget.record_usage(inp, out)
+                record_token_usage(inp, out)
 
             # Check if the model wants to use a tool
             if response.stop_reason == "tool_use":
@@ -122,6 +136,7 @@ class ReviewAgent:
                         )
                         step.tool_result = result
                         self.steps.append(step)
+                        record_tool_call(block.name)
 
                         tool_results.append(
                             {
@@ -161,6 +176,10 @@ class ReviewAgent:
         ]
 
         for step_num in range(1, self.max_steps + 1):
+            if not self.budget.check_budget():
+                log.warning("budget_exceeded", provider="openai")
+                return "Review stopped: token budget exceeded."
+
             log.info("agent_step", step=step_num, provider="openai")
 
             response = await client.chat.completions.create(
@@ -170,6 +189,13 @@ class ReviewAgent:
             )
 
             choice = response.choices[0]
+
+            # Track token usage
+            if hasattr(response, 'usage') and response.usage:
+                inp = response.usage.prompt_tokens
+                out = response.usage.completion_tokens
+                self.budget.record_usage(inp, out)
+                record_token_usage(inp, out)
 
             if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
                 messages.append(choice.message)
@@ -192,6 +218,7 @@ class ReviewAgent:
                     result = await self.mcp_client.call_tool(fn.name, args)
                     step.tool_result = result
                     self.steps.append(step)
+                    record_tool_call(fn.name)
 
                     messages.append(
                         {

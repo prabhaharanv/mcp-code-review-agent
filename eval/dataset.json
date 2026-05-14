@@ -1,0 +1,130 @@
+[
+  {
+    "pr_url": "https://github.com/example/repo/pull/1",
+    "pr_title": "Add user authentication endpoint",
+    "description": "Adds login/logout endpoints with password hashing. Contains SQL injection vulnerability and missing input validation.",
+    "expected_findings": [
+      {
+        "file_path": "auth/views.py",
+        "line": 42,
+        "severity": "blocker",
+        "title": "SQL injection vulnerability",
+        "keywords": ["sql", "injection", "parameterized", "S608"]
+      },
+      {
+        "file_path": "auth/views.py",
+        "line": 15,
+        "severity": "warning",
+        "title": "Missing input validation",
+        "keywords": ["validation", "input", "sanitize"]
+      },
+      {
+        "file_path": "auth/models.py",
+        "line": 28,
+        "severity": "warning",
+        "title": "Hardcoded secret key",
+        "keywords": ["secret", "hardcoded", "S105", "credential"]
+      }
+    ],
+    "expected_event": "REQUEST_CHANGES",
+    "expected_files_analyzed": ["auth/views.py", "auth/models.py", "tests/test_auth.py"]
+  },
+  {
+    "pr_url": "https://github.com/example/repo/pull/2",
+    "pr_title": "Refactor logging configuration",
+    "description": "Moves logging setup to a central module. Clean refactor with minor style issues.",
+    "expected_findings": [
+      {
+        "file_path": "utils/logging.py",
+        "line": 10,
+        "severity": "nit",
+        "title": "Unused import",
+        "keywords": ["unused", "import", "F401"]
+      },
+      {
+        "file_path": "utils/logging.py",
+        "line": 55,
+        "severity": "nit",
+        "title": "Line too long",
+        "keywords": ["line", "long", "E501", "length"]
+      }
+    ],
+    "expected_event": "COMMENT",
+    "expected_files_analyzed": ["utils/logging.py", "config.py"]
+  },
+  {
+    "pr_url": "https://github.com/example/repo/pull/3",
+    "pr_title": "Fix database connection pooling",
+    "description": "Fixes connection leak by properly closing pools. High-risk change touching core infra.",
+    "expected_findings": [
+      {
+        "file_path": "db/pool.py",
+        "line": 67,
+        "severity": "blocker",
+        "title": "Resource leak in error path",
+        "keywords": ["resource", "leak", "close", "finally", "context manager"]
+      },
+      {
+        "file_path": "db/pool.py",
+        "line": 90,
+        "severity": "warning",
+        "title": "Missing error handling for connection timeout",
+        "keywords": ["timeout", "error", "exception", "handling"]
+      },
+      {
+        "file_path": "db/pool.py",
+        "line": 12,
+        "severity": "nit",
+        "title": "Consider using dataclass",
+        "keywords": ["dataclass", "class", "init"]
+      }
+    ],
+    "expected_event": "REQUEST_CHANGES",
+    "expected_files_analyzed": ["db/pool.py", "db/connection.py"]
+  },
+  {
+    "pr_url": "https://github.com/example/repo/pull/4",
+    "pr_title": "Add README badges",
+    "description": "Adds CI status and coverage badges to README. Trivial change, no code modifications.",
+    "expected_findings": [],
+    "expected_event": "APPROVE",
+    "expected_files_analyzed": ["README.md"]
+  },
+  {
+    "pr_url": "https://github.com/example/repo/pull/5",
+    "pr_title": "Implement rate limiting middleware",
+    "description": "Adds token bucket rate limiter. Has complexity and test coverage concerns.",
+    "expected_findings": [
+      {
+        "file_path": "middleware/rate_limit.py",
+        "line": 35,
+        "severity": "warning",
+        "title": "High cyclomatic complexity",
+        "keywords": ["complexity", "cyclomatic", "complex", "refactor"]
+      },
+      {
+        "file_path": "middleware/rate_limit.py",
+        "line": 78,
+        "severity": "warning",
+        "title": "Race condition in token bucket",
+        "keywords": ["race", "condition", "thread", "lock", "atomic", "concurrent"]
+      },
+      {
+        "file_path": "middleware/rate_limit.py",
+        "line": 5,
+        "severity": "nit",
+        "title": "Mutable default argument",
+        "keywords": ["mutable", "default", "argument", "B006"]
+      },
+      {
+        "file_path": "tests/test_rate_limit.py",
+        "line": null,
+        "severity": "praise",
+        "title": "Good test coverage for edge cases",
+        "keywords": ["test", "coverage", "edge", "case"]
+      }
+    ],
+    "expected_event": "COMMENT",
+    "expected_files_analyzed": ["middleware/rate_limit.py", "tests/test_rate_limit.py"]
+  }
+]

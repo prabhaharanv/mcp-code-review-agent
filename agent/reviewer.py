@@ -17,12 +17,15 @@ from datetime import datetime, timezone
 
 import structlog
 
+from agent.budget import TokenBudget
 from agent.client import MCPClient
 from agent.core import ReviewAgent
 from agent.intelligence.pipeline import run_intelligence_pipeline
 from agent.models import AgentEvent, Finding, ReviewResult, Severity
+from agent.observability import TraceContext, record_tool_call, record_intelligence_duration, record_token_usage
 from agent.parser import parse_tool_output
 from agent.planner import create_review_plan, plan_to_prompt_context
+from config import settings
 
 log = structlog.get_logger()
 
@@ -42,7 +45,14 @@ async def run_review(
     Returns:
         Structured ReviewResult with findings
     """
+    import uuid, time
     result = ReviewResult(pr_url=pr_url)
+    trace = TraceContext(trace_id=str(uuid.uuid4()), pr_url=pr_url)
+    budget = TokenBudget(
+        max_input_tokens=settings.max_input_tokens,
+        max_output_tokens=settings.max_output_tokens,
+        max_total_tokens=settings.max_total_tokens,
+    )
 
     # ── Step 1: Fetch PR context ─────────────────────────────
     log.info("fetching_pr_context", pr_url=pr_url)
@@ -72,9 +82,10 @@ async def run_review(
     )
 
     # ── Step 3: Run agent with plan context ──────────────────
-    agent = ReviewAgent(mcp_client=mcp_client, max_steps=max_steps)
+    agent = ReviewAgent(mcp_client=mcp_client, max_steps=max_steps, budget=budget)
     plan_context = plan_to_prompt_context(plan)
-    review_text = await agent.review_with_plan(pr_url, plan_context)
+    async with trace.span("agent_loop", max_steps=max_steps):
+        review_text = await agent.review_with_plan(pr_url, plan_context)
 
     result.raw_review_text = review_text
     result.steps_taken = len(agent.steps)
@@ -99,6 +110,7 @@ async def run_review(
                 file_contents[file_path] = step.tool_result
 
     # ── Step 5: Intelligence pipeline ────────────────────────
+    intel_start = time.monotonic()
     result.findings = await run_intelligence_pipeline(
         findings=raw_findings,
         pr_files=files,
@@ -106,6 +118,8 @@ async def run_review(
         mcp_client=mcp_client,
         changed_files={f.get("filename", "") for f in files},
     )
+
+    record_intelligence_duration(time.monotonic() - intel_start)
 
     # ── Step 6: Determine review event ───────────────────────
     if result.blocker_count > 0:

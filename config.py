@@ -21,6 +21,12 @@ class Settings(BaseSettings):
 
     # Agent
     max_agent_steps: int = 20
+    max_input_tokens: int = 100_000
+    max_output_tokens: int = 20_000
+    max_total_tokens: int = 120_000
+
+    # Webhook
+    webhook_secret: str = ""
 
     # Logging
     log_level: str = "INFO"

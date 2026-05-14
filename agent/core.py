@@ -60,6 +60,25 @@ class ReviewAgent:
         else:
             return await self._run_openai(system_prompt, task)
 
+    async def review_with_plan(self, pr_url: str, plan_context: str) -> str:
+        """Run a code review with a pre-built plan injected into context.
+
+        Args:
+            pr_url: GitHub PR URL to review
+            plan_context: Formatted review plan text to prepend to the task
+
+        Returns:
+            The final review summary text
+        """
+        task = REVIEW_TASK_TEMPLATE.format(pr_url=pr_url)
+        task_with_plan = f"{plan_context}\n\n---\n\n{task}"
+        system_prompt = build_system_prompt(self.max_steps)
+
+        if settings.llm_provider == "anthropic":
+            return await self._run_anthropic(system_prompt, task_with_plan)
+        else:
+            return await self._run_openai(system_prompt, task_with_plan)
+
     # ── Anthropic ──────────────────────────────────────────────
 
     async def _run_anthropic(self, system_prompt: str, task: str) -> str:

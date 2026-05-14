@@ -25,6 +25,7 @@ class Finding(BaseModel):
     description: str
     suggestion: str | None = None
     tool_source: str | None = None  # which MCP tool produced the evidence
+    confidence: float | None = None  # 0.0–1.0, set by intelligence pipeline
 
 
 class ReviewPlan(BaseModel):

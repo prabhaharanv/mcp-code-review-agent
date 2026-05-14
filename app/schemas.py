@@ -34,6 +34,7 @@ class FindingResponse(BaseModel):
     title: str
     description: str
     suggestion: str | None = None
+    confidence: float | None = None
 
 
 class ReviewResponse(BaseModel):

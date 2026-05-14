@@ -19,6 +19,7 @@ import structlog
 
 from agent.client import MCPClient
 from agent.core import ReviewAgent
+from agent.intelligence.pipeline import run_intelligence_pipeline
 from agent.models import AgentEvent, Finding, ReviewResult, Severity
 from agent.parser import parse_tool_output
 from agent.planner import create_review_plan, plan_to_prompt_context
@@ -80,6 +81,9 @@ async def run_review(
     result.total_tool_calls = len(agent.steps)
 
     # ── Step 4: Extract structured findings from observations ─
+    raw_findings: list[Finding] = []
+    file_contents: dict[str, str] = {}
+
     for step in agent.steps:
         if step.tool_name and step.tool_result:
             # Determine file context from tool args
@@ -88,9 +92,22 @@ async def run_review(
                 file_path = step.tool_args.get("file_path", step.tool_args.get("filename", ""))
 
             findings = parse_tool_output(step.tool_name, step.tool_result, file_path)
-            result.findings.extend(findings)
+            raw_findings.extend(findings)
 
-    # ── Step 5: Determine review event ───────────────────────
+            # Collect file contents for cross-file analysis
+            if step.tool_name == "get_file_contents" and file_path:
+                file_contents[file_path] = step.tool_result
+
+    # ── Step 5: Intelligence pipeline ────────────────────────
+    result.findings = await run_intelligence_pipeline(
+        findings=raw_findings,
+        pr_files=files,
+        file_contents=file_contents,
+        mcp_client=mcp_client,
+        changed_files={f.get("filename", "") for f in files},
+    )
+
+    # ── Step 6: Determine review event ───────────────────────
     if result.blocker_count > 0:
         result.event = "REQUEST_CHANGES"
     elif result.warning_count == 0 and result.nit_count == 0:
@@ -166,7 +183,10 @@ async def run_review_stream(
     plan_context = plan_to_prompt_context(plan)
     review_text = await agent.review_with_plan(pr_url, plan_context)
 
-    # Emit tool call events from recorded steps
+    # Emit tool call events and collect raw findings
+    raw_findings: list[Finding] = []
+    file_contents: dict[str, str] = {}
+
     for step in agent.steps:
         yield AgentEvent(
             event_type="tool_call",
@@ -183,14 +203,29 @@ async def run_review_stream(
                 file_path = step.tool_args.get("file_path", step.tool_args.get("filename", ""))
 
             findings = parse_tool_output(step.tool_name, step.tool_result, file_path)
-            result.findings.extend(findings)
+            raw_findings.extend(findings)
 
-            for finding in findings:
-                yield AgentEvent(
-                    event_type="finding",
-                    step=step.step,
-                    data=finding.model_dump(),
-                )
+            if step.tool_name == "get_file_contents" and file_path:
+                file_contents[file_path] = step.tool_result
+
+    # ── Intelligence pipeline ────────────────────────────────
+    yield AgentEvent(event_type="thinking", data={"message": "Running intelligence pipeline..."})
+
+    enriched_findings = await run_intelligence_pipeline(
+        findings=raw_findings,
+        pr_files=files,
+        file_contents=file_contents,
+        mcp_client=mcp_client,
+        changed_files={f.get("filename", "") for f in files},
+    )
+    result.findings = enriched_findings
+
+    for finding in enriched_findings:
+        yield AgentEvent(
+            event_type="finding",
+            step=0,
+            data=finding.model_dump(),
+        )
 
     # ── Done ─────────────────────────────────────────────────
     result.summary = review_text

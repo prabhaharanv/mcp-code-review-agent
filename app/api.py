@@ -28,7 +28,7 @@ from config import settings
 
 log = structlog.get_logger()
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 # Global MCP client — initialized on startup, closed on shutdown
 _mcp_client: MCPClient | None = None

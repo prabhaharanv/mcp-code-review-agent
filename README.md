@@ -190,15 +190,6 @@ Metrics: **F1 score**, finding recall, finding precision, severity accuracy, sug
 PYTHONPATH=. pytest tests/ -v
 ```
 
-## Development Timeline
-
-| Week | Focus | Highlights |
-|------|-------|------------|
-| 1 | **Foundation** | MCP servers, ReAct agent core, tool discovery, CLI |
-| 2 | **Structure** | Planner, parser, reviewer orchestrator, FastAPI API, 64 tests |
-| 3 | **Intelligence** | Severity, suggestions, confidence, cross-file, RAG pipeline, 162 tests |
-| 4 | **Production** | Metrics, tracing, token budget, webhook, eval framework, Docker, CI |
-
 ## License
 
 MIT

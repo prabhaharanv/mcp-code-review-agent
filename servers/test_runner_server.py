@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import tempfile
 
 from mcp.server.fastmcp import FastMCP
 
@@ -47,14 +46,9 @@ async def run_pytest(
     if not os.path.isdir(repo_dir):
         return json.dumps({"error": f"repo_dir does not exist: {repo_dir}"})
 
-    # Write results to a temp JSON file
-    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-        report_path = tmp.name
-
     cmd = [
         "python", "-m", "pytest",
         test_path,
-        f"--json-report --json-report-file={report_path}",
         "--tb=short",
         "--no-header",
         "-q",
@@ -62,20 +56,9 @@ async def run_pytest(
     if markers:
         cmd.extend(["-m", markers])
 
-    # Fall back to plain output if json-report plugin isn't installed
-    cmd_plain = [
-        "python", "-m", "pytest",
-        test_path,
-        "--tb=short",
-        "--no-header",
-        "-q",
-    ]
-    if markers:
-        cmd_plain.extend(["-m", markers])
-
     try:
         stdout, stderr, rc = await asyncio.wait_for(
-            _run_command(cmd_plain, cwd=repo_dir),
+            _run_command(cmd, cwd=repo_dir),
             timeout=timeout,
         )
     except asyncio.TimeoutError:
@@ -112,12 +95,6 @@ async def run_pytest(
 
     if current_failure:
         failures.append("\n".join(current_failure))
-
-    # Clean up temp file
-    try:
-        os.unlink(report_path)
-    except OSError:
-        pass
 
     return json.dumps(
         {

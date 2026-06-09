@@ -29,6 +29,40 @@ def _rag_headers() -> dict[str, str]:
     return headers
 
 
+async def _ask_rag(question: str, top_k: int, not_found_message: str) -> str:
+    """Query the RAG /ask endpoint and return a curated JSON result.
+
+    Shared by all knowledge-base tools: makes the HTTP call, handles errors
+    and abstention, and normalizes the response to {found, answer, sources}.
+    """
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            f"{RAG_URL}/ask",
+            headers=_rag_headers(),
+            json={"question": question, "top_k": top_k},
+        )
+
+    if resp.status_code != 200:
+        return json.dumps({"error": f"RAG API returned {resp.status_code}"})
+
+    data = resp.json()
+
+    if data.get("abstained", False):
+        return json.dumps({"found": False, "message": not_found_message})
+
+    return json.dumps(
+        {
+            "found": True,
+            "answer": data["answer"],
+            "sources": [
+                {"title": c["title"], "source": c["source"]}
+                for c in data.get("citations", [])
+            ],
+        },
+        indent=2,
+    )
+
+
 @mcp.tool()
 async def search_coding_standards(query: str) -> str:
     """Search the coding standards knowledge base for guidelines, best practices,
@@ -38,35 +72,11 @@ async def search_coding_standards(query: str) -> str:
         query: Natural language question about coding standards
               (e.g. "What are the rules for error handling in async Python?")
     """
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(
-            f"{RAG_URL}/ask",
-            headers=_rag_headers(),
-            json={"question": query, "top_k": 3},
-        )
-
-        if resp.status_code != 200:
-            return json.dumps({"error": f"RAG API returned {resp.status_code}"})
-
-        data = resp.json()
-
-        if data.get("abstained", False):
-            return json.dumps({
-                "found": False,
-                "message": "No relevant coding standards found for this query.",
-            })
-
-        return json.dumps(
-            {
-                "found": True,
-                "answer": data["answer"],
-                "sources": [
-                    {"title": c["title"], "source": c["source"]}
-                    for c in data.get("citations", [])
-                ],
-            },
-            indent=2,
-        )
+    return await _ask_rag(
+        query,
+        top_k=3,
+        not_found_message="No relevant coding standards found for this query.",
+    )
 
 
 @mcp.tool()
@@ -78,35 +88,11 @@ async def search_review_patterns(query: str) -> str:
         query: Description of the code pattern to look up
               (e.g. "common issues with Python exception handling")
     """
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(
-            f"{RAG_URL}/ask",
-            headers=_rag_headers(),
-            json={"question": f"code review pattern: {query}", "top_k": 5},
-        )
-
-        if resp.status_code != 200:
-            return json.dumps({"error": f"RAG API returned {resp.status_code}"})
-
-        data = resp.json()
-
-        if data.get("abstained", False):
-            return json.dumps({
-                "found": False,
-                "message": "No matching review patterns found.",
-            })
-
-        return json.dumps(
-            {
-                "found": True,
-                "answer": data["answer"],
-                "sources": [
-                    {"title": c["title"], "source": c["source"]}
-                    for c in data.get("citations", [])
-                ],
-            },
-            indent=2,
-        )
+    return await _ask_rag(
+        f"code review pattern: {query}",
+        top_k=5,
+        not_found_message="No matching review patterns found.",
+    )
 
 
 if __name__ == "__main__":

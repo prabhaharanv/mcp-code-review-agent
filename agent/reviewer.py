@@ -73,7 +73,7 @@ async def run_review(
     result.pr_title = metadata.get("title", "")
 
     # ── Step 2: Build review plan ────────────────────────────
-    plan = create_review_plan(metadata, files)
+    plan = create_review_plan(metadata, files, max_steps=max_steps)
     result.plan = plan
     log.info(
         "review_plan_created",
@@ -178,7 +178,7 @@ async def run_review_stream(
     result.pr_title = metadata.get("title", "")
 
     # ── Plan ─────────────────────────────────────────────────
-    plan = create_review_plan(metadata, files)
+    plan = create_review_plan(metadata, files, max_steps=max_steps)
     result.plan = plan
 
     yield AgentEvent(

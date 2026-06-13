@@ -23,6 +23,7 @@ HIGH_RISK_PATTERNS = [
 def create_review_plan(
     pr_metadata: dict,
     pr_files: list[dict],
+    max_steps: int = 20,
 ) -> ReviewPlan:
     """Create a review plan from PR metadata and file list.
 
@@ -57,7 +58,7 @@ def create_review_plan(
         )
 
         if needs_analysis:
-            files_to_analyze.append(filename)
+            files_to_analyze.append((filename, additions, _is_high_risk(filename)))
 
         # Determine which tools to run
         if ext in LINTABLE:
@@ -72,8 +73,8 @@ def create_review_plan(
             risk_areas.append(f"{filename} — touches security/config/auth")
 
     # Check if tests exist for changed source files
-    source_files = [f for f in files_to_analyze if not _is_test_file(f)]
-    test_files = [f for f in files_to_analyze if _is_test_file(f)]
+    source_files = [name for name, _, _ in files_to_analyze if not _is_test_file(name)]
+    test_files = [name for name, _, _ in files_to_analyze if _is_test_file(name)]
     if source_files and not test_files:
         risk_areas.append("No test files changed — missing test coverage?")
         checks_to_run.add("find_test_files")
@@ -85,17 +86,21 @@ def create_review_plan(
     if len(pr_files) > 15:
         risk_areas.append(f"Touches {len(pr_files)} files — consider splitting")
 
+    # Prioritize high-risk files first, then by additions, before capping
+    files_to_analyze.sort(key=lambda x: (x[2], x[1]), reverse=True)
+    prioritized = [name for name, _, _ in files_to_analyze[:20]]
+
     # Estimate steps: 1 for metadata + 1 per file to read + 1 per check + 1 to post
-    estimated_steps = 1 + len(files_to_analyze) + len(checks_to_run) + 1
+    estimated_steps = 1 + len(prioritized) + len(checks_to_run) + 1
 
     summary = _build_summary(pr_metadata)
 
     return ReviewPlan(
         summary=summary,
-        files_to_analyze=files_to_analyze[:20],  # cap to avoid huge PRs
+        files_to_analyze=prioritized,
         checks_to_run=sorted(checks_to_run),
         risk_areas=risk_areas,
-        estimated_steps=min(estimated_steps, 20),
+        estimated_steps=min(estimated_steps, max_steps),
     )
 
 
